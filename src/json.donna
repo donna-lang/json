@@ -1,0 +1,409 @@
+//// JSON parsing and encoding for Donna.
+////
+//// Backed by the yyjson C library for fast, correct parsing.
+////
+//// ```donna
+//// import json
+////
+//// let result = json.parse("{\"name\": \"Donna\", \"version\": 1}")
+//// case result:
+//// json.Err(_) -> "parse error"
+//// json.Ok(value) ->
+//// case json.get(value, "name"):
+//// json.Err(_) -> ""
+//// json.Ok(name) -> json.unwrap_string(json.as_string(name))
+//// ```
+
+import donna/float
+import donna/list
+import donna/string
+
+/// A JSON value.
+///
+/// ```donna
+/// import json
+///
+/// pub fn make_object() -> json.Json:
+///   json.Object([#("ok", json.Bool(True)), #("count", json.Int(3))])
+/// ```
+pub type Json:
+  Null
+  Bool(Bool)
+  Int(Int)
+  Float(Float)
+  Str(String)
+  Array(List(Json))
+  Object(List(#(String, Json)))
+
+/// Result of a parse or lookup operation.
+///
+/// ```donna
+/// import json
+///
+/// pub fn is_ok() -> Bool:
+///   json.parse("{}") |> json.is_ok
+/// ```
+pub type Parsed(a):
+  Ok(a)
+  Err(String)
+
+@external("c", "donna_json_parse")
+fn donna_json_parse(input: String) -> String
+
+/// Parse a JSON string into a `Json` value.
+///
+/// ```donna
+/// import json
+///
+/// pub fn example() -> json.Parsed(json.Json):
+///   json.parse("[1, 2, 3]")
+/// ```
+pub fn parse(input: String) -> Parsed(Json):
+  let tokens = string.split(donna_json_parse(input), "")
+  let #(result, _) = parse_token(tokens)
+  result
+
+/// Get a value from a JSON object by key.
+///
+/// ```donna
+/// import json
+///
+/// pub fn read_name(obj: json.Json) -> String:
+///   case json.get(obj, "name"):
+///     json.Err(_) -> ""
+///     json.Ok(v) -> json.unwrap_string(json.as_string(v))
+/// ```
+pub fn get(obj: Json, key: String) -> Parsed(Json):
+  case obj:
+    Object(pairs) -> lookup_key(pairs, key)
+    _ -> Err("not an object")
+
+/// Get an element from a JSON array by index (zero-based).
+///
+/// ```donna
+/// import json
+///
+/// pub fn first(arr: json.Json) -> json.Parsed(json.Json):
+///   json.at(arr, 0)
+/// ```
+pub fn at(arr: Json, index: Int) -> Parsed(Json):
+  case arr:
+    Array(items) ->
+      case index < 0:
+        True -> Err("index out of bounds")
+        False -> list_at(items, index)
+    _ -> Err("not an array")
+
+/// Extract a string from a Json value.
+///
+/// ```donna
+/// import json
+///
+/// pub fn read(v: json.Json) -> json.Parsed(String):
+///   json.as_string(v)
+/// ```
+pub fn as_string(j: Json) -> Parsed(String):
+  case j:
+    Str(s) -> Ok(s)
+    _ -> Err("not a string")
+
+/// Extract an integer from a Json value.
+///
+/// ```donna
+/// import json
+///
+/// pub fn read(v: json.Json) -> json.Parsed(Int):
+///   json.as_int(v)
+/// ```
+pub fn as_int(j: Json) -> Parsed(Int):
+  case j:
+    Int(n) -> Ok(n)
+    _ -> Err("not an integer")
+
+/// Extract a float from a Json value.
+///
+/// ```donna
+/// import json
+///
+/// pub fn read(v: json.Json) -> json.Parsed(Float):
+///   json.as_float(v)
+/// ```
+pub fn as_float(j: Json) -> Parsed(Float):
+  case j:
+    Float(f) -> Ok(f)
+    _ -> Err("not a float")
+
+/// Extract a boolean from a Json value.
+///
+/// ```donna
+/// import json
+///
+/// pub fn read(v: json.Json) -> json.Parsed(Bool):
+///   json.as_bool(v)
+/// ```
+pub fn as_bool(j: Json) -> Parsed(Bool):
+  case j:
+    Bool(b) -> Ok(b)
+    _ -> Err("not a boolean")
+
+/// Extract the list of elements from a Json array.
+///
+/// ```donna
+/// import json
+///
+/// pub fn read(v: json.Json) -> json.Parsed(List(json.Json)):
+///   json.as_array(v)
+/// ```
+pub fn as_array(j: Json) -> Parsed(List(Json)):
+  case j:
+    Array(items) -> Ok(items)
+    _ -> Err("not an array")
+
+/// Extract the list of key-value pairs from a Json object.
+///
+/// ```donna
+/// import json
+///
+/// pub fn read(v: json.Json) -> json.Parsed(List(#(String, json.Json))):
+///   json.as_object(v)
+/// ```
+pub fn as_object(j: Json) -> Parsed(List(#(String, Json))):
+  case j:
+    Object(pairs) -> Ok(pairs)
+    _ -> Err("not an object")
+
+/// Return True when a Json value is Null.
+///
+/// ```donna
+/// import json
+///
+/// pub fn example() -> Bool:
+///   json.is_null(json.Null)
+/// ```
+pub fn is_null(j: Json) -> Bool:
+  case j:
+    Null -> True
+    _ -> False
+
+/// Return True when a Parsed result is Ok.
+///
+/// ```donna
+/// import json
+///
+/// pub fn example() -> Bool:
+///   json.is_ok(json.Ok(json.Null))
+/// ```
+pub fn is_ok(r: Parsed(a)) -> Bool:
+  case r:
+    Ok(_) -> True
+    Err(_) -> False
+
+/// Return True when a Parsed result is Err.
+///
+/// ```donna
+/// import json
+///
+/// pub fn example() -> Bool:
+///   json.is_err(json.Err("nope"))
+/// ```
+pub fn is_err(r: Parsed(a)) -> Bool:
+  case r:
+    Ok(_) -> False
+    Err(_) -> True
+
+/// Extract a string from a Parsed(String), returning a fallback on error.
+///
+/// ```donna
+/// import json
+///
+/// pub fn example() -> String:
+///   json.unwrap_string(json.Ok("Donna"))
+/// ```
+pub fn unwrap_string(r: Parsed(String)) -> String:
+  case r:
+    Ok(s) -> s
+    Err(e) -> "__err:" <> e
+
+/// Extract an integer from a Parsed(Int), returning 0 on error.
+///
+/// ```donna
+/// import json
+///
+/// pub fn example() -> Int:
+///   json.unwrap_int(json.Ok(42))
+/// ```
+pub fn unwrap_int(r: Parsed(Int)) -> Int:
+  case r:
+    Ok(n) -> n
+    Err(_) -> 0
+
+/// Extract a boolean from a Parsed(Bool), returning False on error.
+///
+/// ```donna
+/// import json
+///
+/// pub fn example() -> Bool:
+///   json.unwrap_bool(json.Ok(True))
+/// ```
+pub fn unwrap_bool(r: Parsed(Bool)) -> Bool:
+  case r:
+    Ok(b) -> b
+    Err(_) -> False
+
+/// Encode a Json value to a JSON string.
+///
+/// ```donna
+/// import json
+///
+/// pub fn round_trip(j: json.Json) -> String:
+///   json.encode(j)
+/// ```
+pub fn encode(j: Json) -> String:
+  case j:
+    Null -> "null"
+    Bool(True) -> "true"
+    Bool(False) -> "false"
+    Int(n) -> int_to_string(n)
+    Float(f) -> float.to_string(f)
+    Str(s) -> "\"" <> escape_str(s) <> "\""
+    Array(items) -> "[" <> encode_array(items, True, "") <> "]"
+    Object(pairs) -> "{" <> encode_object(pairs, True, "") <> "}"
+
+fn encode_array(items: List(Json), first: Bool, acc: String) -> String:
+  case items:
+    [] -> acc
+    [item, ..rest] ->
+      let sep = case first:
+        True -> ""
+        False -> ","
+      encode_array(rest, False, acc <> sep <> encode(item))
+
+fn encode_object(
+  pairs: List(#(String, Json)),
+  first: Bool,
+  acc: String
+) -> String:
+  case pairs:
+    [] -> acc
+    [#(k, v), ..rest] ->
+      let sep = case first:
+        True -> ""
+        False -> ","
+      encode_object(
+        rest,
+        False,
+        acc <> sep <> "\"" <> escape_str(k) <> "\":" <> encode(v)
+      )
+
+fn escape_str(s: String) -> String:
+  escape_chars(s, 0, string.length(s), "")
+
+fn escape_chars(s: String, i: Int, len: Int, acc: String) -> String:
+  case i >= len:
+    True -> acc
+    False ->
+      let c = string.char_at(s, i)
+      let out = case c:
+        34 -> "\\\""
+        92 -> "\\\\"
+        10 -> "\\n"
+        13 -> "\\r"
+        9 -> "\\t"
+        _ -> string.char_str(s, i)
+      escape_chars(s, i + 1, len, acc <> out)
+
+fn parse_token(tokens: List(String)) -> #(Parsed(Json), List(String)):
+  case tokens:
+    [] -> #(Err("unexpected end of input"), [])
+    [token, ..rest] ->
+      let tlen = string.length(token)
+      case tlen:
+        0 -> parse_token(rest)
+        _ ->
+          let tag = string.char_at(token, 0)
+          let payload = string.slice(token, 1, tlen - 1)
+          case tag:
+            78 -> #(Ok(Null), rest)
+            66 ->
+              case string.equal(payload, "1"):
+                True -> #(Ok(Bool(True)), rest)
+                False -> #(Ok(Bool(False)), rest)
+            73 -> #(Ok(Int(string.to_int(payload))), rest)
+            70 -> #(Ok(Float(float.parse(payload))), rest)
+            83 -> #(Ok(Str(unescape_payload(payload))), rest)
+            65 ->
+              let count = string.to_int(payload)
+              let #(items, remaining) = parse_n(rest, count, [])
+              #(Ok(Array(items)), remaining)
+            79 ->
+              let count = string.to_int(payload)
+              let #(pairs, remaining) = parse_pairs(rest, count, [])
+              #(Ok(Object(pairs)), remaining)
+            69 -> #(Err(payload), rest)
+            _ -> #(Err("unknown token"), rest)
+
+fn parse_n(
+  tokens: List(String),
+  count: Int,
+  acc: List(Json)
+) -> #(List(Json), List(String)):
+  case count <= 0:
+    True -> #(list.reverse(acc), tokens)
+    False ->
+      let #(result, remaining) = parse_token(tokens)
+      case result:
+        Err(_) -> #(list.reverse(acc), remaining)
+        Ok(value) -> parse_n(remaining, count - 1, [value, ..acc])
+
+fn parse_pairs(
+  tokens: List(String),
+  count: Int,
+  acc: List(#(String, Json))
+) -> #(List(#(String, Json)), List(String)):
+  case count <= 0:
+    True -> #(list.reverse(acc), tokens)
+    False ->
+      let #(key_result, after_key) = parse_token(tokens)
+      case key_result:
+        Err(_) -> #(list.reverse(acc), after_key)
+        Ok(key_val) ->
+          let key = case key_val:
+            Str(s) -> s
+            _ -> ""
+          let #(val_result, after_val) = parse_token(after_key)
+          case val_result:
+            Err(_) -> #(list.reverse(acc), after_val)
+            Ok(value) ->
+              parse_pairs(after_val, count - 1, [#(key, value), ..acc])
+
+fn unescape_payload(s: String) -> String:
+  unescape_chars(s, 0, string.length(s), "")
+
+fn unescape_chars(s: String, i: Int, len: Int, acc: String) -> String:
+  case i >= len:
+    True -> acc
+    False ->
+      let c = string.char_at(s, i)
+      case c == 2 && i + 1 < len:
+        True ->
+          case string.char_at(s, i + 1):
+            49 -> unescape_chars(s, i + 2, len, acc <> "")
+            50 -> unescape_chars(s, i + 2, len, acc <> "")
+            _ -> unescape_chars(s, i + 1, len, acc <> string.char_str(s, i))
+        False -> unescape_chars(s, i + 1, len, acc <> string.char_str(s, i))
+
+fn lookup_key(pairs: List(#(String, Json)), key: String) -> Parsed(Json):
+  case pairs:
+    [] -> Err("key '" <> key <> "' not found")
+    [#(k, v), ..rest] ->
+      case string.equal(k, key):
+        True -> Ok(v)
+        False -> lookup_key(rest, key)
+
+fn list_at(items: List(Json), index: Int) -> Parsed(Json):
+  case items:
+    [] -> Err("index out of bounds")
+    [item, ..rest] ->
+      case index:
+        0 -> Ok(item)
+        _ -> list_at(rest, index - 1)

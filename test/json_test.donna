@@ -1,0 +1,158 @@
+import json
+import donna/float
+import donna/list
+import donna/string
+import unittest/should
+
+pub fn parse_object_test() -> String:
+  case json.parse("{\"name\": \"Donna\", \"version\": 1}"):
+    json.Err(e) -> should.fail(e)
+    json.Ok(obj) ->
+      let name = object_string(obj, "name")
+      let version = object_int(obj, "version")
+      should.all([
+        should.equal_string(name, "Donna"),
+        should.equal_int(version, 1)
+      ])
+
+pub fn parse_array_test() -> String:
+  case json.parse("[1, 2, 3]"):
+    json.Err(e) -> should.fail(e)
+    json.Ok(arr) ->
+      let first = array_int(arr, 0)
+      let third = array_int(arr, 2)
+      should.all([
+        should.equal_int(first, 1),
+        should.equal_int(third, 3)
+      ])
+
+pub fn parse_booleans_test() -> String:
+  case json.parse("{\"a\": true, \"b\": false}"):
+    json.Err(e) -> should.fail(e)
+    json.Ok(obj) ->
+      let a = object_bool(obj, "a")
+      let b = object_bool(obj, "b")
+      should.all([
+        should.equal_bool(a, True),
+        should.equal_bool(b, False)
+      ])
+
+pub fn parse_null_test() -> String:
+  case json.parse("null"):
+    json.Err(e) -> should.fail(e)
+    json.Ok(v) ->
+      should.equal_bool(json.is_null(v), True)
+
+pub fn parse_float_test() -> String:
+  case json.parse("3.5"):
+    json.Err(e) -> should.fail(e)
+    json.Ok(v) ->
+      case json.as_float(v):
+        json.Err(e) -> should.fail(e)
+        json.Ok(f) -> should.equal_string(float.to_string(f), "3.5")
+
+pub fn parse_escaped_string_test() -> String:
+  case json.parse("\"line\\nquote: \\\"Donna\\\"\""):
+    json.Err(e) -> should.fail(e)
+    json.Ok(v) ->
+      should.equal_string(
+        json.unwrap_string(json.as_string(v)),
+        "line\nquote: \"Donna\""
+      )
+
+pub fn parse_control_string_test() -> String:
+  case json.parse("\"\\u0001\\u0002\""):
+    json.Err(e) -> should.fail(e)
+    json.Ok(v) ->
+      let s = json.unwrap_string(json.as_string(v))
+      should.all([
+        should.equal_int(string.length(s), 2),
+        should.equal_int(string.char_at(s, 0), 1),
+        should.equal_int(string.char_at(s, 1), 2)
+      ])
+
+pub fn parse_error_test() -> String:
+  case json.parse("{bad json}"):
+    json.Err(_) -> ""
+    json.Ok(_) -> should.fail("should have failed")
+
+pub fn encode_object_test() -> String:
+  let obj = json.Object([
+    #("name", json.Str("Donna")),
+    #("count", json.Int(42)),
+    #("ok", json.Bool(True))
+  ])
+  let encoded = json.encode(obj)
+  should.equal_string(encoded, "{\"name\":\"Donna\",\"count\":42,\"ok\":true}")
+
+pub fn encode_array_test() -> String:
+  let arr = json.Array([json.Int(1), json.Null, json.Bool(False)])
+  should.equal_string(json.encode(arr), "[1,null,false]")
+
+pub fn encode_escaped_string_test() -> String:
+  should.equal_string(
+    json.encode(json.Str("line\n\"Donna\"")),
+    "\"line\\n\\\"Donna\\\"\""
+  )
+
+pub fn lookup_errors_test() -> String:
+  should.all([
+    should.equal_bool(json.is_err(json.get(json.Null, "name")), True),
+    should.equal_bool(json.is_err(json.at(json.Array([]), 0)), True),
+    should.equal_bool(json.is_ok(json.parse("{}")), True)
+  ])
+
+pub fn extract_array_object_test() -> String:
+  let arr = json.Array([json.Int(1), json.Int(2)])
+  let obj = json.Object([#("items", arr)])
+  case json.as_object(obj):
+    json.Err(e) -> should.fail(e)
+    json.Ok(pairs) ->
+      case json.get(obj, "items"):
+        json.Err(e) -> should.fail(e)
+        json.Ok(items) ->
+          case json.as_array(items):
+            json.Err(e) -> should.fail(e)
+            json.Ok(values) ->
+              should.all([
+                should.equal_int(list.length(pairs), 1),
+                should.equal_int(list.length(values), 2)
+              ])
+
+pub fn nested_test() -> String:
+  let src = "{\"user\": {\"name\": \"Ada\", \"scores\": [10, 20]}}"
+  case json.parse(src):
+    json.Err(e) -> should.fail(e)
+    json.Ok(root) ->
+      case json.get(root, "user"):
+        json.Err(e) -> should.fail(e)
+        json.Ok(user) ->
+          let name = object_string(user, "name")
+          case json.get(user, "scores"):
+            json.Err(e) -> should.fail(e)
+            json.Ok(scores) ->
+              let second = array_int(scores, 1)
+              should.all([
+                should.equal_string(name, "Ada"),
+                should.equal_int(second, 20)
+              ])
+
+fn object_string(obj: json.Json, key: String) -> String:
+  case json.get(obj, key):
+    json.Err(e) -> "__err:" <> e
+    json.Ok(v) -> json.unwrap_string(json.as_string(v))
+
+fn object_int(obj: json.Json, key: String) -> Int:
+  case json.get(obj, key):
+    json.Err(_) -> 0
+    json.Ok(v) -> json.unwrap_int(json.as_int(v))
+
+fn object_bool(obj: json.Json, key: String) -> Bool:
+  case json.get(obj, key):
+    json.Err(_) -> False
+    json.Ok(v) -> json.unwrap_bool(json.as_bool(v))
+
+fn array_int(arr: json.Json, index: Int) -> Int:
+  case json.at(arr, index):
+    json.Err(_) -> 0
+    json.Ok(v) -> json.unwrap_int(json.as_int(v))
