@@ -230,14 +230,18 @@ body.page-package-docs .ctor-doc p { margin: 0; }
 }</style>
 </head>
 <body class="page-package">
-<div class="theme-corner"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch to light theme"><span class="theme-toggle-icon" aria-hidden="true"></span></button></div><button class="sidebar-burger" id="sidebar-burger" aria-label="Menu"><span></span><span></span><span></span></button><div class="pkg-layout"><aside class="pkg-sidebar" id="page-sidebar"><div class="sidebar-pkg-name">json</div><div class="sidebar-pkg-ver">v0.1.0</div><div class="sidebar-section-label">On this page</div><ul class="sidebar-nav"><li><a href="#overview">Overview</a></li><li><a href="#installation">Installation</a></li><li><a href="#quick-start">Quick start</a></li><li><a href="#api">API</a></li><li><a href="#supported-json">Supported JSON</a></li><li><a href="#licence">Licence</a></li></ul><div class="sidebar-section-label">Links</div><ul class="sidebar-nav"><li><a href="docs.html">Documentation &rarr;</a></li><li><a href="https://github.com/donna-lang/json">GitHub &rarr;</a></li><li><a href="https://donna-lang.github.io/json/">Docs &rarr;</a></li></ul></aside><div class="pkg-spacer" aria-hidden="true"></div><main class="pkg-main"><div class="breadcrumb"><span>json</span></div><div class="pkg-header"><div class="pkg-header-left"><div class="pkg-title"><span>json</span></div><p class="pkg-tagline">JSON parsing and encoding for Donna</p><div class="pkg-badges"><span class="badge-item">MIT</span></div></div><div class="pkg-actions"><a href="docs.html" class="btn btn-primary">View Docs</a><a href="https://github.com/donna-lang/json" class="btn btn-ghost">GitHub &rarr;</a></div></div><div class="readme"><h1>json</h1>
+<div class="theme-corner"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch to light theme"><span class="theme-toggle-icon" aria-hidden="true"></span></button></div><button class="sidebar-burger" id="sidebar-burger" aria-label="Menu"><span></span><span></span><span></span></button><div class="pkg-layout"><aside class="pkg-sidebar" id="page-sidebar"><div class="sidebar-pkg-name">json</div><div class="sidebar-pkg-ver">v0.1.0</div><div class="sidebar-section-label">On this page</div><ul class="sidebar-nav"><li><a href="#overview">Overview</a></li><li><a href="#installation">Installation</a></li><li><a href="#quick-start">Quick start</a></li><li><a href="#api">API</a></li><li><a href="#supported-json">Supported JSON</a></li><li><a href="#fast-document-handles">Fast document handles</a></li><li><a href="#licence">Licence</a></li></ul><div class="sidebar-section-label">Links</div><ul class="sidebar-nav"><li><a href="docs.html">Documentation &rarr;</a></li><li><a href="https://github.com/donna-lang/json">GitHub &rarr;</a></li><li><a href="https://donna-lang.github.io/json/">Docs &rarr;</a></li></ul></aside><div class="pkg-spacer" aria-hidden="true"></div><main class="pkg-main"><div class="breadcrumb"><span>json</span></div><div class="pkg-header"><div class="pkg-header-left"><div class="pkg-title"><span>json</span></div><p class="pkg-tagline">JSON parsing and encoding for Donna</p><div class="pkg-badges"><span class="badge-item">MIT</span></div></div><div class="pkg-actions"><a href="docs.html" class="btn btn-primary">View Docs</a><a href="https://github.com/donna-lang/json" class="btn btn-ghost">GitHub &rarr;</a></div></div><div class="readme"><h1>json</h1>
 <img src="https://img.shields.io/badge/Donna-json-FF6347?style=for-the-badge" alt="Donna json"/>
 <a href="https://donna-lang.github.io/json/"><img src="https://img.shields.io/badge/Docs-Read-2F81F7?style=for-the-badge" alt="Docs - Read"/></a>
 <img src="https://img.shields.io/github/actions/workflow/status/donna-lang/json/test.yml?branch=main&label=Test&style=for-the-badge" alt="Test status"/>
 <p>JSON parsing and encoding for the <a href="https://github.com/donna-lang/donna">Donna</a> programming language.</p>
 <h2>Overview</h2>
-<p><code>json</code> parses JSON into Donna values and can encode Donna JSON values back to strings.</p>
-<p>The parser is backed by <a href="https://github.com/ibireme/yyjson">yyjson</a>, with a small Donna API on top.</p>
+<p><code>json</code> parses JSON into Donna values, validates JSON quickly, and can query C-backed JSON documents without building a full Donna tree.</p>
+<p>The parser is backed by <a href="https://github.com/ibireme/yyjson">yyjson</a>, with two ways to work:</p>
+<ul>
+<li>Use <code>json.parse</code> when you want a normal Donna <code>Json</code> value.</li>
+<li>Use <code>json.open</code> and <code>json.query_*</code> when you want fast access to a few fields.</li>
+</ul>
 <h2>Installation</h2>
 <p>Add to your <code>donna.toml</code> as a dependency:</p>
 <pre><code class="language-toml">[dependencies]
@@ -247,6 +251,7 @@ json = { git = &quot;https://github.com/donna-lang/json&quot;, version = &quot;&
 <pre><code class="language-donna">import json
 </code></pre>
 <h2>Quick start</h2>
+<p>Parse into Donna values:</p>
 <pre><code class="language-donna">import json
 
 pub fn read_name() -&gt; String:
@@ -258,6 +263,17 @@ pub fn read_name() -&gt; String:
         json.Err(_) -&gt; &quot;&quot;
         json.Ok(name) -&gt; json.unwrap_string(json.as_string(name))
 </code></pre>
+<p>Query without materializing the whole document:</p>
+<pre><code class="language-donna">import json
+
+pub fn read_title(src: String) -&gt; String:
+  case json.open(src):
+    json.Err(_) -&gt; &quot;&quot;
+    json.Ok(doc) -&gt;
+      let title = json.unwrap_string(json.query_string(doc, &quot;items.0.title&quot;))
+      let _ = json.close(doc)
+      title
+</code></pre>
 <p>Create and encode JSON:</p>
 <pre><code class="language-donna">import json
 
@@ -268,6 +284,12 @@ pub fn make_payload() -&gt; String:
     #(&quot;count&quot;, json.Int(3))
   ])
   |&gt; json.encode
+</code></pre>
+<p>Validate JSON:</p>
+<pre><code class="language-donna">import json
+
+pub fn valid_config(src: String) -&gt; Bool:
+  json.is_valid(src)
 </code></pre>
 <p>Run tests:</p>
 <pre><code class="language-sh">donna test
@@ -284,6 +306,23 @@ pub fn make_payload() -&gt; String:
 }
 </code></pre>
 <p>Supported values: objects, arrays, strings, integers, floats, booleans, and null.</p>
+<h2>Fast document handles</h2>
+<p><code>json.parse</code> gives you a Donna <code>Json</code> tree. That is comfortable, but it means Donna has to allocate the whole document.</p>
+<p>For larger documents, open a C-backed document and query paths:</p>
+<pre><code class="language-donna">case json.open(src):
+  json.Err(_) -&gt; &quot;&quot;
+  json.Ok(doc) -&gt;
+    let name = json.unwrap_string(json.query_string(doc, &quot;user.name&quot;))
+    let first = json.unwrap_string(json.query_string(doc, &quot;items.0.title&quot;))
+    let _ = json.close(doc)
+    name &lt;&gt; &quot;: &quot; &lt;&gt; first
+</code></pre>
+<p>Path syntax is intentionally small:</p>
+<pre><code class="language-text">user.name
+items.0.title
+</code></pre>
+<p>Use <code>json.is_valid</code> when you only need to check whether input is valid JSON. It calls yyjson directly and avoids allocating Donna <code>Json</code> values.</p>
+<p>Use <code>json.open</code>, <code>json.query</code>, and the typed <code>query_*</code> helpers when you want fast access to a few values without materializing the whole JSON document.</p>
 <h2>Licence</h2>
 <p>MIT</p>
 </div></main></div>

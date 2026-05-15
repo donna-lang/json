@@ -18,6 +18,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
+#include <stdint.h>
 
 #include "yyjson.h"
 
@@ -175,6 +177,63 @@ static void write_val(wire_buf *w, yyjson_val *val) {
     }
 }
 
+static yyjson_val *query_path(yyjson_val *root, const char *path) {
+    yyjson_val *cur = root;
+    const char *p = path ? path : "";
+
+    if (!cur) return NULL;
+    if (*p == '\0') return cur;
+
+    while (*p) {
+        const char *start = p;
+        size_t len;
+
+        while (*p && *p != '.') p++;
+        len = (size_t)(p - start);
+        if (len == 0) return NULL;
+
+        if (yyjson_is_obj(cur)) {
+            char *key = malloc(len + 1);
+            if (!key) return NULL;
+            memcpy(key, start, len);
+            key[len] = '\0';
+            cur = yyjson_obj_get(cur, key);
+            free(key);
+            if (!cur) return NULL;
+        } else if (yyjson_is_arr(cur)) {
+            size_t idx = 0;
+            size_t i;
+            for (i = 0; i < len; i++) {
+                if (!isdigit((unsigned char)start[i])) return NULL;
+                idx = idx * 10 + (size_t)(start[i] - '0');
+            }
+            cur = yyjson_arr_get(cur, idx);
+            if (!cur) return NULL;
+        } else {
+            return NULL;
+        }
+
+        if (*p == '.') p++;
+    }
+
+    return cur;
+}
+
+static char *wire_error(const char *message) {
+    wire_buf w;
+    memset(&w, 0, sizeof(w));
+    emit_byte(&w, 'E');
+    emit_cstr(&w, message ? message : "json error");
+    emit_sep(&w);
+    buf_grow(&w, 1);
+    if (w.failed) {
+        free(w.buf);
+        return strdup("Eout of memory\x01");
+    }
+    w.buf[w.len] = '\0';
+    return w.buf;
+}
+
 char *donna_json_parse(const char *input) {
     yyjson_doc      *doc;
     yyjson_read_err  err;
@@ -195,6 +254,57 @@ char *donna_json_parse(const char *input) {
     write_val(&w, root);
     yyjson_doc_free(doc);
 
+    if (w.failed) {
+        free(w.buf);
+        return strdup("Eout of memory\x01");
+    }
+
+    buf_grow(&w, 1);
+    w.buf[w.len] = '\0';
+    return w.buf;
+}
+
+long donna_json_is_valid(const char *input) {
+    yyjson_doc *doc;
+
+    if (!input) input = "";
+
+    doc = yyjson_read((char *)input, strlen(input), 0);
+    if (!doc) return 0;
+
+    yyjson_doc_free(doc);
+    return 1;
+}
+
+intptr_t donna_json_doc_open(const char *input) {
+    yyjson_doc *doc;
+
+    if (!input) input = "";
+
+    doc = yyjson_read((char *)input, strlen(input), 0);
+    return (intptr_t)doc;
+}
+
+intptr_t donna_json_doc_close(intptr_t handle) {
+    yyjson_doc *doc = (yyjson_doc *)handle;
+    if (doc) yyjson_doc_free(doc);
+    return 0;
+}
+
+char *donna_json_doc_query(intptr_t handle, const char *path) {
+    yyjson_doc *doc = (yyjson_doc *)handle;
+    yyjson_val *root;
+    yyjson_val *value;
+    wire_buf w;
+
+    if (!doc) return wire_error("invalid json document handle");
+
+    root = yyjson_doc_get_root(doc);
+    value = query_path(root, path);
+    if (!value) return wire_error("path not found");
+
+    memset(&w, 0, sizeof(w));
+    write_val(&w, value);
     if (w.failed) {
         free(w.buf);
         return strdup("Eout of memory\x01");

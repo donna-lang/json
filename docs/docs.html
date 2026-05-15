@@ -230,7 +230,7 @@ body.page-package-docs .ctor-doc p { margin: 0; }
 }</style>
 </head>
 <body class="page-package-docs">
-<div class="theme-corner"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch to light theme"><span class="theme-toggle-icon" aria-hidden="true"></span></button></div><button class="sidebar-burger" id="sidebar-burger" aria-label="Menu"><span></span><span></span><span></span></button><div class="layout"><aside class="sidebar" id="page-sidebar"><a href="index.html" class="sidebar-back">&larr; Package overview</a><div class="sidebar-pkg"><div class="sidebar-pkg-name">json</div><div class="sidebar-pkg-ver">v0.1.0 &middot; API Reference</div></div><div class="sidebar-section-label">json</div><p class="sidebar-subcat">Types</p><ul class="sidebar-nav"><li><a href="#Json" class="fn-link">Json</a></li><li><a href="#Parsed" class="fn-link">Parsed</a></li></ul><p class="sidebar-subcat">Functions</p><ul class="sidebar-nav"><li><a href="#parse" class="fn-link">parse</a></li><li><a href="#get" class="fn-link">get</a></li><li><a href="#at" class="fn-link">at</a></li><li><a href="#as_string" class="fn-link">as_string</a></li><li><a href="#as_int" class="fn-link">as_int</a></li><li><a href="#as_float" class="fn-link">as_float</a></li><li><a href="#as_bool" class="fn-link">as_bool</a></li><li><a href="#as_array" class="fn-link">as_array</a></li><li><a href="#as_object" class="fn-link">as_object</a></li><li><a href="#is_null" class="fn-link">is_null</a></li><li><a href="#is_ok" class="fn-link">is_ok</a></li><li><a href="#is_err" class="fn-link">is_err</a></li><li><a href="#unwrap_string" class="fn-link">unwrap_string</a></li><li><a href="#unwrap_int" class="fn-link">unwrap_int</a></li><li><a href="#unwrap_bool" class="fn-link">unwrap_bool</a></li><li><a href="#encode" class="fn-link">encode</a></li></ul></aside><div class="spacer" aria-hidden="true"></div><main class="main"><div class="breadcrumb"><a href="index.html">json</a><span>/</span><span>Docs</span></div><div class="page-head"><h1><span>json</span> &mdash; API Reference</h1><p>JSON parsing and encoding for Donna</p><div class="ver-row"><span class="ver-chip current">v0.1.0</span><span class="ver-chip">MIT</span><a href="https://github.com/donna-lang/json" class="ver-chip ver-chip-link">Repository &rarr;</a></div></div><section class="module-section" id="json"><h2>json</h2><div class="module-doc"><p>JSON parsing and encoding for Donna.</p>
+<div class="theme-corner"><button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch to light theme"><span class="theme-toggle-icon" aria-hidden="true"></span></button></div><button class="sidebar-burger" id="sidebar-burger" aria-label="Menu"><span></span><span></span><span></span></button><div class="layout"><aside class="sidebar" id="page-sidebar"><a href="index.html" class="sidebar-back">&larr; Package overview</a><div class="sidebar-pkg"><div class="sidebar-pkg-name">json</div><div class="sidebar-pkg-ver">v0.1.0 &middot; API Reference</div></div><div class="sidebar-section-label">json</div><p class="sidebar-subcat">Types</p><ul class="sidebar-nav"><li><a href="#Json" class="fn-link">Json</a></li><li><a href="#Parsed" class="fn-link">Parsed</a></li><li><a href="#Doc" class="fn-link">Doc</a></li></ul><p class="sidebar-subcat">Functions</p><ul class="sidebar-nav"><li><a href="#parse" class="fn-link">parse</a></li><li><a href="#is_valid" class="fn-link">is_valid</a></li><li><a href="#open" class="fn-link">open</a></li><li><a href="#close" class="fn-link">close</a></li><li><a href="#query" class="fn-link">query</a></li><li><a href="#query_string" class="fn-link">query_string</a></li><li><a href="#query_int" class="fn-link">query_int</a></li><li><a href="#query_float" class="fn-link">query_float</a></li><li><a href="#query_bool" class="fn-link">query_bool</a></li><li><a href="#get" class="fn-link">get</a></li><li><a href="#at" class="fn-link">at</a></li><li><a href="#as_string" class="fn-link">as_string</a></li><li><a href="#as_int" class="fn-link">as_int</a></li><li><a href="#as_float" class="fn-link">as_float</a></li><li><a href="#as_bool" class="fn-link">as_bool</a></li><li><a href="#as_array" class="fn-link">as_array</a></li><li><a href="#as_object" class="fn-link">as_object</a></li><li><a href="#is_null" class="fn-link">is_null</a></li><li><a href="#is_ok" class="fn-link">is_ok</a></li><li><a href="#is_err" class="fn-link">is_err</a></li><li><a href="#unwrap_string" class="fn-link">unwrap_string</a></li><li><a href="#unwrap_int" class="fn-link">unwrap_int</a></li><li><a href="#unwrap_bool" class="fn-link">unwrap_bool</a></li><li><a href="#encode" class="fn-link">encode</a></li></ul></aside><div class="spacer" aria-hidden="true"></div><main class="main"><div class="breadcrumb"><a href="index.html">json</a><span>/</span><span>Docs</span></div><div class="page-head"><h1><span>json</span> &mdash; API Reference</h1><p>JSON parsing and encoding for Donna</p><div class="ver-row"><span class="ver-chip current">v0.1.0</span><span class="ver-chip">MIT</span><a href="https://github.com/donna-lang/json" class="ver-chip ver-chip-link">Repository &rarr;</a></div></div><section class="module-section" id="json"><h2>json</h2><div class="module-doc"><p>JSON parsing and encoding for Donna.</p>
 <p>Backed by the yyjson C library for fast, correct parsing.</p>
 <pre><code class="language-donna">import json
 
@@ -254,11 +254,78 @@ pub fn make_object() -&gt; json.Json:
 pub fn is_ok() -&gt; Bool:
   json.parse(&quot;{}&quot;) |&gt; json.is_ok
 </code></pre>
-</div><div class="ctor-list"><div class="ctor-item"><code class="ctor-sig">Ok(a)</code></div><div class="ctor-item"><code class="ctor-sig">Err(String)</code></div></div></div></div></div><div class="items-section"><h3>Functions</h3><div class="fn-card" id="parse"><div class="code-block"><div class="code-bar"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><button type="button" class="copy-code" aria-label="Copy code">Copy</button></div><pre><code class="language-donna">pub fn parse(input: String) -&gt; Parsed(Json)</code></pre></div><div class="fn-desc"><p>Parse a JSON string into a <code>Json</code> value.</p>
+</div><div class="ctor-list"><div class="ctor-item"><code class="ctor-sig">Ok(a)</code></div><div class="ctor-item"><code class="ctor-sig">Err(String)</code></div></div></div></div><div class="fn-card" id="Doc"><div class="code-block"><div class="code-bar"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><button type="button" class="copy-code" aria-label="Copy code">Copy</button></div><pre><code class="language-donna">pub type Doc</code></pre></div><div class="fn-card-body"><div class="fn-desc"><p>A handle to a C-backed yyjson document.</p>
+<p>Use <code>open</code> to create a document and <code>close</code> when you are finished with it.
+Querying a document is faster than materializing the whole JSON tree with
+<code>parse</code>.</p>
+<pre><code class="language-donna">import json
+
+pub fn read_name(src: String) -&gt; String:
+  case json.open(src):
+    json.Err(_) -&gt; &quot;&quot;
+    json.Ok(doc) -&gt;
+      let name = json.unwrap_string(json.query_string(doc, &quot;user.name&quot;))
+      let _ = json.close(doc)
+      name
+</code></pre>
+</div><div class="ctor-list"><div class="ctor-item"><code class="ctor-sig">Doc(Int)</code></div></div></div></div></div><div class="items-section"><h3>Functions</h3><div class="fn-card" id="parse"><div class="code-block"><div class="code-bar"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><button type="button" class="copy-code" aria-label="Copy code">Copy</button></div><pre><code class="language-donna">pub fn parse(input: String) -&gt; Parsed(Json)</code></pre></div><div class="fn-desc"><p>Parse a JSON string into a <code>Json</code> value.</p>
 <pre><code class="language-donna">import json
 
 pub fn example() -&gt; json.Parsed(json.Json):
   json.parse(&quot;[1, 2, 3]&quot;)
+</code></pre>
+</div></div><div class="fn-card" id="is_valid"><div class="code-block"><div class="code-bar"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><button type="button" class="copy-code" aria-label="Copy code">Copy</button></div><pre><code class="language-donna">pub fn is_valid(input: String) -&gt; Bool</code></pre></div><div class="fn-desc"><p>Return True when a string contains valid JSON.</p>
+<p>This uses yyjson directly and does not allocate a Donna <code>Json</code> tree, so it
+is the fastest way to check whether input is JSON.</p>
+<pre><code class="language-donna">import json
+
+pub fn example() -&gt; Bool:
+  json.is_valid(&quot;{\&quot;ok\&quot;: true}&quot;)
+</code></pre>
+</div></div><div class="fn-card" id="open"><div class="code-block"><div class="code-bar"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><button type="button" class="copy-code" aria-label="Copy code">Copy</button></div><pre><code class="language-donna">pub fn open(input: String) -&gt; Parsed(Doc)</code></pre></div><div class="fn-desc"><p>Open a JSON document as a C-backed handle.</p>
+<p>The returned document must be closed with <code>json.close</code>.</p>
+<pre><code class="language-donna">import json
+
+pub fn example(src: String) -&gt; json.Parsed(json.Doc):
+  json.open(src)
+</code></pre>
+</div></div><div class="fn-card" id="close"><div class="code-block"><div class="code-bar"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><button type="button" class="copy-code" aria-label="Copy code">Copy</button></div><pre><code class="language-donna">pub fn close(doc: Doc) -&gt; Nil</code></pre></div><div class="fn-desc"><p>Close a C-backed JSON document.</p>
+<pre><code class="language-donna">import json
+
+pub fn example(doc: json.Doc) -&gt; Nil:
+  json.close(doc)
+</code></pre>
+</div></div><div class="fn-card" id="query"><div class="code-block"><div class="code-bar"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><button type="button" class="copy-code" aria-label="Copy code">Copy</button></div><pre><code class="language-donna">pub fn query(doc: Doc, path: String) -&gt; Parsed(Json)</code></pre></div><div class="fn-desc"><p>Query a value from a C-backed document by path.</p>
+<p>Paths are dot-separated. Object keys use their name and array indexes use
+numeric segments, for example <code>user.name</code> or <code>items.0.title</code>.</p>
+<pre><code class="language-donna">import json
+
+pub fn first_item(doc: json.Doc) -&gt; json.Parsed(json.Json):
+  json.query(doc, &quot;items.0&quot;)
+</code></pre>
+</div></div><div class="fn-card" id="query_string"><div class="code-block"><div class="code-bar"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><button type="button" class="copy-code" aria-label="Copy code">Copy</button></div><pre><code class="language-donna">pub fn query_string(doc: Doc, path: String) -&gt; Parsed(String)</code></pre></div><div class="fn-desc"><p>Query a string value from a C-backed document.</p>
+<pre><code class="language-donna">import json
+
+pub fn read(doc: json.Doc) -&gt; json.Parsed(String):
+  json.query_string(doc, &quot;name&quot;)
+</code></pre>
+</div></div><div class="fn-card" id="query_int"><div class="code-block"><div class="code-bar"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><button type="button" class="copy-code" aria-label="Copy code">Copy</button></div><pre><code class="language-donna">pub fn query_int(doc: Doc, path: String) -&gt; Parsed(Int)</code></pre></div><div class="fn-desc"><p>Query an integer value from a C-backed document.</p>
+<pre><code class="language-donna">import json
+
+pub fn read(doc: json.Doc) -&gt; json.Parsed(Int):
+  json.query_int(doc, &quot;version&quot;)
+</code></pre>
+</div></div><div class="fn-card" id="query_float"><div class="code-block"><div class="code-bar"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><button type="button" class="copy-code" aria-label="Copy code">Copy</button></div><pre><code class="language-donna">pub fn query_float(doc: Doc, path: String) -&gt; Parsed(Float)</code></pre></div><div class="fn-desc"><p>Query a float value from a C-backed document.</p>
+<pre><code class="language-donna">import json
+
+pub fn read(doc: json.Doc) -&gt; json.Parsed(Float):
+  json.query_float(doc, &quot;ratio&quot;)
+</code></pre>
+</div></div><div class="fn-card" id="query_bool"><div class="code-block"><div class="code-bar"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><button type="button" class="copy-code" aria-label="Copy code">Copy</button></div><pre><code class="language-donna">pub fn query_bool(doc: Doc, path: String) -&gt; Parsed(Bool)</code></pre></div><div class="fn-desc"><p>Query a boolean value from a C-backed document.</p>
+<pre><code class="language-donna">import json
+
+pub fn read(doc: json.Doc) -&gt; json.Parsed(Bool):
+  json.query_bool(doc, &quot;ok&quot;)
 </code></pre>
 </div></div><div class="fn-card" id="get"><div class="code-block"><div class="code-bar"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div><button type="button" class="copy-code" aria-label="Copy code">Copy</button></div><pre><code class="language-donna">pub fn get(obj: Json, key: String) -&gt; Parsed(Json)</code></pre></div><div class="fn-desc"><p>Get a value from a JSON object by key.</p>
 <pre><code class="language-donna">import json

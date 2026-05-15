@@ -47,8 +47,40 @@ pub type Parsed(a):
   Ok(a)
   Err(String)
 
+/// A handle to a C-backed yyjson document.
+///
+/// Use `open` to create a document and `close` when you are finished with it.
+/// Querying a document is faster than materializing the whole JSON tree with
+/// `parse`.
+///
+/// ```donna
+/// import json
+///
+/// pub fn read_name(src: String) -> String:
+///   case json.open(src):
+///     json.Err(_) -> ""
+///     json.Ok(doc) ->
+///       let name = json.unwrap_string(json.query_string(doc, "user.name"))
+///       let _ = json.close(doc)
+///       name
+/// ```
+pub type Doc:
+  Doc(Int)
+
 @external("c", "donna_json_parse")
 fn donna_json_parse(input: String) -> String
+
+@external("c", "donna_json_is_valid")
+fn donna_json_is_valid(input: String) -> Int
+
+@external("c", "donna_json_doc_open")
+fn donna_json_doc_open(input: String) -> Int
+
+@external("c", "donna_json_doc_close")
+fn donna_json_doc_close(handle: Int) -> Int
+
+@external("c", "donna_json_doc_query")
+fn donna_json_doc_query(handle: Int, path: String) -> String
 
 /// Parse a JSON string into a `Json` value.
 ///
@@ -59,9 +91,121 @@ fn donna_json_parse(input: String) -> String
 ///   json.parse("[1, 2, 3]")
 /// ```
 pub fn parse(input: String) -> Parsed(Json):
-  let tokens = string.split(donna_json_parse(input), "")
-  let #(result, _) = parse_token(tokens)
+  let wire = donna_json_parse(input)
+  let #(result, _) = parse_wire(wire, 0, string.length(wire))
   result
+
+/// Return True when a string contains valid JSON.
+///
+/// This uses yyjson directly and does not allocate a Donna `Json` tree, so it
+/// is the fastest way to check whether input is JSON.
+///
+/// ```donna
+/// import json
+///
+/// pub fn example() -> Bool:
+///   json.is_valid("{\"ok\": true}")
+/// ```
+pub fn is_valid(input: String) -> Bool:
+  donna_json_is_valid(input) == 1
+
+/// Open a JSON document as a C-backed handle.
+///
+/// The returned document must be closed with `json.close`.
+///
+/// ```donna
+/// import json
+///
+/// pub fn example(src: String) -> json.Parsed(json.Doc):
+///   json.open(src)
+/// ```
+pub fn open(input: String) -> Parsed(Doc):
+  let handle = donna_json_doc_open(input)
+  case handle == 0:
+    True -> Err("invalid JSON")
+    False -> Ok(Doc(handle))
+
+/// Close a C-backed JSON document.
+///
+/// ```donna
+/// import json
+///
+/// pub fn example(doc: json.Doc) -> Nil:
+///   json.close(doc)
+/// ```
+pub fn close(doc: Doc) -> Nil:
+  let _ = case doc:
+    Doc(handle) -> donna_json_doc_close(handle)
+  Nil
+
+/// Query a value from a C-backed document by path.
+///
+/// Paths are dot-separated. Object keys use their name and array indexes use
+/// numeric segments, for example `user.name` or `items.0.title`.
+///
+/// ```donna
+/// import json
+///
+/// pub fn first_item(doc: json.Doc) -> json.Parsed(json.Json):
+///   json.query(doc, "items.0")
+/// ```
+pub fn query(doc: Doc, path: String) -> Parsed(Json):
+  let wire = case doc:
+    Doc(handle) -> donna_json_doc_query(handle, path)
+  let #(result, _) = parse_wire(wire, 0, string.length(wire))
+  result
+
+/// Query a string value from a C-backed document.
+///
+/// ```donna
+/// import json
+///
+/// pub fn read(doc: json.Doc) -> json.Parsed(String):
+///   json.query_string(doc, "name")
+/// ```
+pub fn query_string(doc: Doc, path: String) -> Parsed(String):
+  case query(doc, path):
+    Err(e) -> Err(e)
+    Ok(value) -> as_string(value)
+
+/// Query an integer value from a C-backed document.
+///
+/// ```donna
+/// import json
+///
+/// pub fn read(doc: json.Doc) -> json.Parsed(Int):
+///   json.query_int(doc, "version")
+/// ```
+pub fn query_int(doc: Doc, path: String) -> Parsed(Int):
+  case query(doc, path):
+    Err(e) -> Err(e)
+    Ok(value) -> as_int(value)
+
+/// Query a float value from a C-backed document.
+///
+/// ```donna
+/// import json
+///
+/// pub fn read(doc: json.Doc) -> json.Parsed(Float):
+///   json.query_float(doc, "ratio")
+/// ```
+pub fn query_float(doc: Doc, path: String) -> Parsed(Float):
+  case query(doc, path):
+    Err(e) -> Err(e)
+    Ok(value) -> as_float(value)
+
+/// Query a boolean value from a C-backed document.
+///
+/// ```donna
+/// import json
+///
+/// pub fn read(doc: json.Doc) -> json.Parsed(Bool):
+///   json.query_bool(doc, "ok")
+/// ```
+pub fn query_bool(doc: Doc, path: String) -> Parsed(Bool):
+  case query(doc, path):
+    Err(e) -> Err(e)
+    Ok(value) -> as_bool(value)
 
 /// Get a value from a JSON object by key.
 ///
@@ -312,69 +456,90 @@ fn escape_chars(s: String, i: Int, len: Int, acc: String) -> String:
         _ -> string.char_str(s, i)
       escape_chars(s, i + 1, len, acc <> out)
 
-fn parse_token(tokens: List(String)) -> #(Parsed(Json), List(String)):
-  case tokens:
-    [] -> #(Err("unexpected end of input"), [])
-    [token, ..rest] ->
-      let tlen = string.length(token)
-      case tlen:
-        0 -> parse_token(rest)
-        _ ->
-          let tag = string.char_at(token, 0)
-          let payload = string.slice(token, 1, tlen - 1)
+fn parse_wire(s: String, pos: Int, len: Int) -> #(Parsed(Json), Int):
+  case pos >= len:
+    True -> #(Err("unexpected end of input"), pos)
+    False ->
+      let sep = find_sep(s, len, pos)
+      case sep < 0:
+        True -> #(Err("unterminated token"), len)
+        False ->
+          let tag = string.char_at(s, pos)
+          let payload_start = pos + 1
+          let payload_len = sep - payload_start
+          let payload = string.slice(s, payload_start, payload_len)
+          let next_pos = sep + 1
           case tag:
-            78 -> #(Ok(Null), rest)
+            78 -> #(Ok(Null), next_pos)
             66 ->
               case string.equal(payload, "1"):
-                True -> #(Ok(Bool(True)), rest)
-                False -> #(Ok(Bool(False)), rest)
-            73 -> #(Ok(Int(string.to_int(payload))), rest)
-            70 -> #(Ok(Float(float.parse(payload))), rest)
-            83 -> #(Ok(Str(unescape_payload(payload))), rest)
+                True -> #(Ok(Bool(True)), next_pos)
+                False -> #(Ok(Bool(False)), next_pos)
+            73 -> #(Ok(Int(string.to_int(payload))), next_pos)
+            70 -> #(Ok(Float(float.parse(payload))), next_pos)
+            83 -> #(Ok(Str(unescape_payload(payload))), next_pos)
             65 ->
               let count = string.to_int(payload)
-              let #(items, remaining) = parse_n(rest, count, [])
-              #(Ok(Array(items)), remaining)
+              let #(items, after_items) = parse_n_wire(s, len, next_pos, count, [])
+              #(Ok(Array(items)), after_items)
             79 ->
               let count = string.to_int(payload)
-              let #(pairs, remaining) = parse_pairs(rest, count, [])
-              #(Ok(Object(pairs)), remaining)
-            69 -> #(Err(payload), rest)
-            _ -> #(Err("unknown token"), rest)
+              let #(pairs, after_pairs) = parse_pairs_wire(s, len, next_pos, count, [])
+              #(Ok(Object(pairs)), after_pairs)
+            69 -> #(Err(payload), next_pos)
+            _ -> #(Err("unknown token"), next_pos)
 
-fn parse_n(
-  tokens: List(String),
+fn find_sep(s: String, len: Int, i: Int) -> Int:
+  case i >= len:
+    True -> -1
+    False ->
+      case string.char_at(s, i) == 1:
+        True -> i
+        False -> find_sep(s, len, i + 1)
+
+fn parse_n_wire(
+  s: String,
+  len: Int,
+  pos: Int,
   count: Int,
   acc: List(Json)
-) -> #(List(Json), List(String)):
+) -> #(List(Json), Int):
   case count <= 0:
-    True -> #(list.reverse(acc), tokens)
+    True -> #(list.reverse(acc), pos)
     False ->
-      let #(result, remaining) = parse_token(tokens)
+      let #(result, next) = parse_wire(s, pos, len)
       case result:
-        Err(_) -> #(list.reverse(acc), remaining)
-        Ok(value) -> parse_n(remaining, count - 1, [value, ..acc])
+        Err(_) -> #(list.reverse(acc), next)
+        Ok(value) -> parse_n_wire(s, len, next, count - 1, [value, ..acc])
 
-fn parse_pairs(
-  tokens: List(String),
+fn parse_pairs_wire(
+  s: String,
+  len: Int,
+  pos: Int,
   count: Int,
   acc: List(#(String, Json))
-) -> #(List(#(String, Json)), List(String)):
+) -> #(List(#(String, Json)), Int):
   case count <= 0:
-    True -> #(list.reverse(acc), tokens)
+    True -> #(list.reverse(acc), pos)
     False ->
-      let #(key_result, after_key) = parse_token(tokens)
+      let #(key_result, after_key) = parse_wire(s, pos, len)
       case key_result:
         Err(_) -> #(list.reverse(acc), after_key)
         Ok(key_val) ->
           let key = case key_val:
-            Str(s) -> s
+            Str(k) -> k
             _ -> ""
-          let #(val_result, after_val) = parse_token(after_key)
+          let #(val_result, after_val) = parse_wire(s, after_key, len)
           case val_result:
             Err(_) -> #(list.reverse(acc), after_val)
             Ok(value) ->
-              parse_pairs(after_val, count - 1, [#(key, value), ..acc])
+              parse_pairs_wire(
+                s,
+                len,
+                after_val,
+                count - 1,
+                [#(key, value), ..acc]
+              )
 
 fn unescape_payload(s: String) -> String:
   unescape_chars(s, 0, string.length(s), "")

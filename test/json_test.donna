@@ -76,6 +76,41 @@ pub fn parse_error_test() -> String:
     json.Err(_) -> ""
     json.Ok(_) -> should.fail("should have failed")
 
+pub fn is_valid_test() -> String:
+  should.all([
+    should.equal_bool(json.is_valid("{\"ok\": true}"), True),
+    should.equal_bool(json.is_valid("{bad json}"), False)
+  ])
+
+pub fn doc_query_test() -> String:
+  let src = "{\"user\":{\"name\":\"Ada\",\"score\":42,\"ratio\":3.5,\"ok\":true},\"items\":[{\"title\":\"First\"}]}"
+  case json.open(src):
+    json.Err(e) -> should.fail(e)
+    json.Ok(doc) ->
+      let name = json.unwrap_string(json.query_string(doc, "user.name"))
+      let score = json.unwrap_int(json.query_int(doc, "user.score"))
+      let ok = json.unwrap_bool(json.query_bool(doc, "user.ok"))
+      let title = json.unwrap_string(json.query_string(doc, "items.0.title"))
+      let ratio = case json.query_float(doc, "user.ratio"):
+        json.Err(e) -> "__err:" <> e
+        json.Ok(f) -> float.to_string(f)
+      let _ = json.close(doc)
+      should.all([
+        should.equal_string(name, "Ada"),
+        should.equal_int(score, 42),
+        should.equal_bool(ok, True),
+        should.equal_string(title, "First"),
+        should.equal_string(ratio, "3.5")
+      ])
+
+pub fn doc_query_error_test() -> String:
+  case json.open("{\"name\":\"Donna\"}"):
+    json.Err(e) -> should.fail(e)
+    json.Ok(doc) ->
+      let missing = json.is_err(json.query_string(doc, "user.name"))
+      let _ = json.close(doc)
+      should.equal_bool(missing, True)
+
 pub fn encode_object_test() -> String:
   let obj = json.Object([
     #("name", json.Str("Donna")),
