@@ -1,8 +1,7 @@
 # json
 
 <img src="https://img.shields.io/badge/Donna-json-FF6347?style=for-the-badge" alt="Donna json"/>
-<a href="https://donna-lang.github.io/json/"><img src="https://img.shields.io/badge/Docs-Read-2F81F7?style=for-the-badge" alt="Docs - Read"/></a>
-<img src="https://img.shields.io/github/actions/workflow/status/donna-lang/json/test.yml?branch=main&label=Test&style=for-the-badge" alt="Test status"/>
+<a href="https://donna-lang.github.io/json/"><img src="https://img.shields.io/badge/Docs-Read-2F81F7?style=for-the-badge" alt="Docs - Read"/></a><img src="https://img.shields.io/github/actions/workflow/status/donna-lang/json/test.yml?branch=main&label=Test&style=for-the-badge" alt="Test status"/>
 
 JSON parsing and encoding for the [Donna](https://github.com/donna-lang/donna) programming language.
 
