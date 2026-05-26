@@ -19,7 +19,7 @@ Add to your `donna.toml` as a dependency:
 
 ```toml
 [dependencies]
-json = { git = "https://github.com/donna-lang/json", version = ">=0.1.0 and <1.0.0" }
+json = { git = "https://github.com/donna-lang/json", version = ">=0.1.2 and <1.0.0" }
 ```
 
 Then import the module:
