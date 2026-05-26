@@ -314,3 +314,14 @@ char *donna_json_doc_query(intptr_t handle, const char *path) {
     w.buf[w.len] = '\0';
     return w.buf;
 }
+
+char *donna_json_float_to_string(intptr_t value) {
+    double n;
+    char buf[64];
+
+    if (!value) return strdup("0");
+
+    n = *(double *)(value + 8);
+    snprintf(buf, sizeof(buf), "%.17g", n);
+    return strdup(buf);
+}

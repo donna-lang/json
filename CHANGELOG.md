@@ -2,6 +2,17 @@
 
 All notable changes to `json` will be documented in this file.
 
+## Unreleased
+
+
+## [0.1.2] — 2026-05-26
+
+### Fixed
+
+- Fixed `json.encode` for `Float` values by formatting the stored JSON float
+  payload through FFI, avoiding invalid QBE output from direct pattern-bound
+  float calls.
+
 ## [0.1.0] — 2026-05-15
 
 Initial release of `json`, a yyjson-backed JSON package for Donna.

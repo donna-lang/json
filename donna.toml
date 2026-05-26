@@ -1,5 +1,5 @@
 name = "json"
-version = "0.1.1"
+version = "0.1.2"
 description = "JSON parsing and encoding for Donna"
 licences = ["MIT"]
 repository = { type = "github", user = "donna-lang", repo = "json" }

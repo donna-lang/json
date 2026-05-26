@@ -82,6 +82,9 @@ fn donna_json_doc_close(handle: Int) -> Int
 @external("c", "donna_json_doc_query")
 fn donna_json_doc_query(handle: Int, path: String) -> String
 
+@external("c", "donna_json_float_to_string")
+fn donna_json_float_to_string(value: Json) -> String
+
 /// Parse a JSON string into a `Json` value.
 ///
 /// ```donna
@@ -408,7 +411,7 @@ pub fn encode(j: Json) -> String:
     Bool(True) -> "true"
     Bool(False) -> "false"
     Int(n) -> int_to_string(n)
-    Float(f) -> float.to_string(f)
+    Float(_) -> donna_json_float_to_string(j)
     Str(s) -> "\"" <> escape_str(s) <> "\""
     Array(items) -> "[" <> encode_array(items, True, "") <> "]"
     Object(pairs) -> "{" <> encode_object(pairs, True, "") <> "}"

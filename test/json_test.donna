@@ -124,6 +124,9 @@ pub fn encode_array_test() -> String:
   let arr = json.Array([json.Int(1), json.Null, json.Bool(False)])
   should.equal_string(json.encode(arr), "[1,null,false]")
 
+pub fn encode_float_test() -> String:
+  should.equal_string(json.encode(json.Float(3.5)), "3.5")
+
 pub fn encode_escaped_string_test() -> String:
   should.equal_string(
     json.encode(json.Str("line\n\"Donna\"")),
